@@ -59,6 +59,8 @@ export default function LessonPage() {
   const [output, setOutput] = useState('');
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [fillBlankAnswer, setFillBlankAnswer] = useState('');
+  const [matchSelections, setMatchSelections] = useState<Record<number, number>>({});
+  const [selectedLeftIndex, setSelectedLeftIndex] = useState<number | null>(null);
   const [showHint, setShowHint] = useState(0);
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string; xp: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +77,8 @@ export default function LessonPage() {
       setOutput('');
       setSelectedAnswer(null);
       setFillBlankAnswer('');
+      setMatchSelections({});
+      setSelectedLeftIndex(null);
       setShowHint(0);
       setFeedback(null);
     }
@@ -188,6 +192,14 @@ sys.stderr = StringIO()
           break;
         case 'code':
           codeData = { code, output, executed: output !== '' };
+          break;
+        case 'match':
+          // Prüfe ob alle Zuordnungen korrekt sind
+          const opts = exercise.options as { left: string[]; right: string[]; correct: number[][] };
+          const allCorrect = opts.correct.every(([leftIdx, rightIdx]) =>
+            matchSelections[leftIdx] === rightIdx
+          );
+          answer = { correct: allCorrect, selections: matchSelections };
           break;
         default:
           answer = selectedAnswer;
@@ -379,6 +391,100 @@ sys.stderr = StringIO()
             </div>
           )}
 
+          {exercise.type === 'match' && exercise.options && typeof exercise.options === 'object' && 'left' in exercise.options && (
+            <div className="space-y-4">
+              <p className="text-py-gray-400 text-sm mb-4">
+                Klicke links auf einen Begriff, dann rechts auf die passende Antwort.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Linke Seite */}
+                <div className="space-y-2">
+                  {(exercise.options as { left: string[]; right: string[]; correct: number[][] }).left.map((item, index) => {
+                    const isSelected = selectedLeftIndex === index;
+                    const isMatched = matchSelections[index] !== undefined;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => !feedback && !isMatched && setSelectedLeftIndex(index)}
+                        disabled={!!feedback || isMatched}
+                        className={`
+                          w-full p-3 rounded-xl border-2 transition-all text-left font-mono text-sm
+                          ${isMatched
+                            ? 'border-py-green-500 bg-py-green-500/20 opacity-60'
+                            : isSelected
+                            ? 'border-py-blue-400 bg-py-blue-400/20'
+                            : 'border-py-gray-600 hover:border-py-gray-500 bg-py-gray-800'
+                          }
+                        `}
+                      >
+                        {item}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Rechte Seite */}
+                <div className="space-y-2">
+                  {(exercise.options as { left: string[]; right: string[]; correct: number[][] }).right.map((item, index) => {
+                    const isMatched = Object.values(matchSelections).includes(index);
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          if (!feedback && selectedLeftIndex !== null && !isMatched) {
+                            setMatchSelections(prev => ({ ...prev, [selectedLeftIndex]: index }));
+                            setSelectedLeftIndex(null);
+                          }
+                        }}
+                        disabled={!!feedback || isMatched || selectedLeftIndex === null}
+                        className={`
+                          w-full p-3 rounded-xl border-2 transition-all text-left text-sm
+                          ${isMatched
+                            ? 'border-py-green-500 bg-py-green-500/20 opacity-60'
+                            : selectedLeftIndex !== null
+                            ? 'border-py-gray-500 hover:border-py-blue-400 bg-py-gray-800'
+                            : 'border-py-gray-600 bg-py-gray-800 opacity-50'
+                          }
+                        `}
+                      >
+                        {item}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Verbindungen anzeigen */}
+              {Object.keys(matchSelections).length > 0 && (
+                <div className="mt-4 p-3 bg-py-gray-800 rounded-xl">
+                  <p className="text-py-gray-400 text-xs mb-2">Deine Zuordnungen:</p>
+                  {Object.entries(matchSelections).map(([leftIdx, rightIdx]) => {
+                    const opts = exercise.options as { left: string[]; right: string[] };
+                    return (
+                      <div key={leftIdx} className="flex items-center gap-2 text-sm text-white">
+                        <span className="font-mono">{opts.left[parseInt(leftIdx)]}</span>
+                        <span className="text-py-green-400">→</span>
+                        <span>{opts.right[rightIdx]}</span>
+                        {!feedback && (
+                          <button
+                            onClick={() => setMatchSelections(prev => {
+                              const newSelections = { ...prev };
+                              delete newSelections[parseInt(leftIdx)];
+                              return newSelections;
+                            })}
+                            className="text-py-red-400 hover:text-py-red-300 ml-2"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {exercise.type === 'code' && (
             <div className="space-y-4">
               {/* Code Editor */}
@@ -498,7 +604,9 @@ sys.stderr = StringIO()
                   submitting ||
                   (exercise.type === 'multiple_choice' && !selectedAnswer) ||
                   (exercise.type === 'fill_blank' && !fillBlankAnswer) ||
-                  (exercise.type === 'code' && !output)
+                  (exercise.type === 'code' && !output) ||
+                  (exercise.type === 'match' && exercise.options && typeof exercise.options === 'object' && 'left' in exercise.options &&
+                    Object.keys(matchSelections).length !== (exercise.options as { left: string[] }).left.length)
                 }
                 className="btn-primary disabled:opacity-50"
               >
