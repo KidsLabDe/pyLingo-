@@ -1,0 +1,233 @@
+// Prisma Schema für pyLingo
+// SQLite Datenbank - portabel und einfach
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// BENUTZER & AUTHENTIFIZIERUNG
+// ============================================
+
+model User {
+  id            String   @id @default(cuid())
+  nickname      String   @unique
+  code          String   // Einfacher Anmeldecode (gehashed)
+  avatarId      Int      @default(1)
+  avatarItems   String   @default("[]") // JSON Array freigeschalteter Items
+
+  // Gamification Stats
+  totalXp       Int      @default(0)
+  currentLevel  Int      @default(1)
+  streakWeeks   Int      @default(0)
+  lastActiveAt  DateTime @default(now())
+  streakFreezes Int      @default(0) // Anzahl verfügbarer Streak-Freezes
+
+  // Beziehungen
+  progress      LessonProgress[]
+  achievements  UserAchievement[]
+  xpHistory     XpEvent[]
+  weeklyStats   WeeklyStats[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Gruppe
+  group         Group?   @relation(fields: [groupId], references: [id])
+  groupId       String?
+}
+
+// ============================================
+// GRUPPEN (für Hackerwerkstatt)
+// ============================================
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  joinCode    String   @unique // Code zum Beitreten
+  description String?
+
+  // Gruppen-Gamification
+  totalXp     Int      @default(0)
+  weeklyGoal  Int      @default(500) // Wöchentliches Gruppenziel
+
+  members     User[]
+  challenges  GroupChallenge[]
+
+  createdAt   DateTime @default(now())
+}
+
+model GroupChallenge {
+  id          String   @id @default(cuid())
+  group       Group    @relation(fields: [groupId], references: [id])
+  groupId     String
+
+  title       String
+  description String
+  xpGoal      Int      // Zu erreichendes XP-Ziel
+  currentXp   Int      @default(0)
+
+  startDate   DateTime
+  endDate     DateTime
+  completed   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+// ============================================
+// LEKTIONEN & MODULE
+// ============================================
+
+model Module {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  icon        String   // Emoji oder Icon-Name
+  order       Int      // Reihenfolge
+  color       String   @default("#58cc02") // Modulfarbe
+
+  requiredXp  Int      @default(0) // XP zum Freischalten
+
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  order       Int
+
+  // Zugehöriges Modul
+  module      Module   @relation(fields: [moduleId], references: [id])
+  moduleId    String
+
+  // Lektion Inhalt
+  type        String   @default("lesson") // "lesson", "game", "challenge"
+  xpReward    Int      @default(10)
+
+  // Übungen in dieser Lektion
+  exercises   Exercise[]
+  progress    LessonProgress[]
+}
+
+model Exercise {
+  id              String   @id @default(cuid())
+  lesson          Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId        String
+  order           Int
+
+  // Übungstyp
+  type            String   // "code", "multiple_choice", "fill_blank", "order", "match"
+
+  // Inhalt (als JSON)
+  title           String
+  instructions    String   // Anweisungen (Markdown)
+  starterCode     String?  // Startcode für Code-Aufgaben
+  solution        String?  // Lösung
+  hints           String   @default("[]") // JSON Array mit Hinweisen
+  testCases       String   @default("[]") // JSON Array mit Tests
+
+  // Multiple Choice / Match spezifisch
+  options         String?  // JSON Array mit Optionen
+  correctAnswer   String?  // Korrekte Antwort(en)
+
+  xpReward        Int      @default(5)
+}
+
+// ============================================
+// FORTSCHRITT & XP
+// ============================================
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId    String
+
+  completed   Boolean  @default(false)
+  score       Int      @default(0) // 0-100
+  attempts    Int      @default(0)
+  bestTime    Int?     // Beste Zeit in Sekunden
+
+  // Welche Übungen wurden gemacht
+  exercisesDone String @default("[]") // JSON Array der Exercise IDs
+
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, lessonId])
+}
+
+model XpEvent {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+
+  amount      Int
+  reason      String   // "lesson_complete", "streak_bonus", "achievement", etc.
+  details     String?  // Zusätzliche Details
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model WeeklyStats {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+
+  weekStart   DateTime // Montag der Woche
+  xpEarned    Int      @default(0)
+  lessonsCompleted Int @default(0)
+  daysActive  Int      @default(0) // Anzahl aktiver Tage in der Woche
+
+  @@unique([userId, weekStart])
+  @@index([weekStart])
+}
+
+// ============================================
+// ACHIEVEMENTS & BADGES
+// ============================================
+
+model Achievement {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  icon        String   // Emoji
+
+  // Bedingungen (als JSON)
+  condition   String   // z.B. {"type": "xp_total", "value": 100}
+
+  // Belohnung
+  xpReward    Int      @default(0)
+  avatarItem  String?  // Freigeschaltetes Avatar-Item
+
+  // Kategorie
+  category    String   @default("general") // "general", "streak", "speed", "social"
+  rarity      String   @default("common") // "common", "rare", "epic", "legendary"
+
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievementId String
+
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}

@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --py-green: #58cc02;
+  --py-green-dark: #4caf00;
+  --py-blue: #1cb0f6;
+  --py-yellow: #ffc800;
+  --py-orange: #ff9600;
+  --py-red: #ff4b4b;
+  --py-purple: #ce82ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Nunito', system-ui, sans-serif;
+  background-color: #131f24;
+  color: white;
+  min-height: 100vh;
+}
+
+/* Duolingo-Style Buttons */
+@layer components {
+  .btn-primary {
+    @apply bg-py-green-500 text-white font-bold py-3 px-6 rounded-xl;
+    @apply shadow-[0_4px_0_0_#4caf00] hover:shadow-[0_2px_0_0_#4caf00];
+    @apply hover:translate-y-[2px] active:translate-y-[4px] active:shadow-none;
+    @apply transition-all duration-100 select-none;
+  }
+
+  .btn-secondary {
+    @apply bg-py-blue-400 text-white font-bold py-3 px-6 rounded-xl;
+    @apply shadow-[0_4px_0_0_#1899d6] hover:shadow-[0_2px_0_0_#1899d6];
+    @apply hover:translate-y-[2px] active:translate-y-[4px] active:shadow-none;
+    @apply transition-all duration-100 select-none;
+  }
+
+  .btn-outline {
+    @apply bg-transparent border-2 border-py-gray-300 text-py-gray-300 font-bold py-3 px-6 rounded-xl;
+    @apply hover:bg-py-gray-300/10 transition-colors duration-200 select-none;
+  }
+
+  .card {
+    @apply bg-py-gray-700 rounded-2xl p-6 shadow-card;
+  }
+
+  .card-hover {
+    @apply card hover:scale-[1.02] transition-transform duration-200 cursor-pointer;
+  }
+
+  /* XP Badge */
+  .xp-badge {
+    @apply inline-flex items-center gap-1 bg-py-yellow-400 text-py-gray-800 font-bold px-3 py-1 rounded-full text-sm;
+  }
+
+  /* Streak Badge */
+  .streak-badge {
+    @apply inline-flex items-center gap-1 bg-py-orange-400 text-white font-bold px-3 py-1 rounded-full text-sm;
+  }
+
+  /* Level Badge */
+  .level-badge {
+    @apply inline-flex items-center gap-1 bg-py-purple-400 text-white font-bold px-3 py-1 rounded-full text-sm;
+  }
+
+  /* Progress Bar */
+  .progress-bar {
+    @apply h-4 bg-py-gray-600 rounded-full overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-gradient-to-r from-py-green-400 to-py-green-500 rounded-full transition-all duration-500;
+  }
+
+  /* Lesson Card States */
+  .lesson-locked {
+    @apply opacity-50 grayscale pointer-events-none;
+  }
+
+  .lesson-available {
+    @apply ring-2 ring-py-green-400 ring-offset-2 ring-offset-py-gray-800;
+  }
+
+  .lesson-completed {
+    @apply border-2 border-py-green-500;
+  }
+
+  /* Code Editor */
+  .code-editor {
+    @apply font-mono text-sm bg-py-gray-800 rounded-xl p-4 border border-py-gray-600;
+  }
+
+  /* Achievement Card */
+  .achievement-card {
+    @apply bg-py-gray-700 rounded-xl p-4 flex items-center gap-4 transition-all duration-300;
+  }
+
+  .achievement-card.unlocked {
+    @apply bg-gradient-to-r from-py-yellow-400/20 to-py-orange-400/20 border border-py-yellow-400/50;
+  }
+
+  .achievement-card.locked {
+    @apply opacity-60 grayscale;
+  }
+
+  /* Leaderboard */
+  .leaderboard-row {
+    @apply flex items-center gap-4 p-4 rounded-xl transition-colors duration-200;
+  }
+
+  .leaderboard-row:nth-child(1) {
+    @apply bg-gradient-to-r from-yellow-400/20 to-yellow-600/20;
+  }
+
+  .leaderboard-row:nth-child(2) {
+    @apply bg-gradient-to-r from-gray-300/20 to-gray-400/20;
+  }
+
+  .leaderboard-row:nth-child(3) {
+    @apply bg-gradient-to-r from-amber-600/20 to-amber-700/20;
+  }
+}
+
+/* Animationen */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px var(--py-green); }
+  50% { box-shadow: 0 0 20px var(--py-green), 0 0 30px var(--py-green); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Konfetti Animation */
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  animation: confetti-fall 3s ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(500px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Monaco Editor Override */
+.monaco-editor {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2b2b2b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b4b4b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5b5b5b;
+}
+
+/* Toast Notification */
+.toast {
+  @apply fixed bottom-4 right-4 bg-py-gray-700 text-white px-6 py-4 rounded-xl shadow-lg;
+  @apply flex items-center gap-3 animate-slide-up z-50;
+}
+
+.toast-success {
+  @apply border-l-4 border-py-green-500;
+}
+
+.toast-error {
+  @apply border-l-4 border-py-red-400;
+}
+
+.toast-xp {
+  @apply bg-gradient-to-r from-py-yellow-400 to-py-orange-400 text-py-gray-800;
+}
