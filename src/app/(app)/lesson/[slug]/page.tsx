@@ -102,7 +102,7 @@ export default function LessonPage() {
 
       // Items mischen für Order-Übungen
       if (exercise.type === 'order' && exercise.options && typeof exercise.options === 'object' && 'items' in exercise.options) {
-        const opts = exercise.options as { items: string[]; correctOrder: number[] };
+        const opts = exercise.options as unknown as { items: string[]; correctOrder: number[] };
         // Erstelle Items mit Original-Index und mische
         const items = opts.items.map((text, i) => ({ text, originalIndex: i }));
         for (let i = items.length - 1; i > 0; i--) {
@@ -233,7 +233,7 @@ sys.stderr = StringIO()
           break;
         case 'order':
           // Prüfe ob die Reihenfolge korrekt ist
-          const orderOpts = exercise.options as { items: string[]; correctOrder: number[] };
+          const orderOpts = exercise.options as unknown as { items: string[]; correctOrder: number[] };
           const currentOrder = orderedItems.map(item => item.originalIndex);
           const isOrderCorrect = orderOpts.correctOrder.every((correctIdx, pos) => currentOrder[pos] === correctIdx);
           answer = { correct: isOrderCorrect, order: currentOrder };
