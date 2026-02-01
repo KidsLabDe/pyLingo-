@@ -62,6 +62,7 @@ export default function LessonPage() {
   const [matchSelections, setMatchSelections] = useState<Record<number, number>>({});
   const [selectedLeftIndex, setSelectedLeftIndex] = useState<number | null>(null);
   const [shuffledRight, setShuffledRight] = useState<{ items: string[]; indexMap: number[] }>({ items: [], indexMap: [] });
+  const [orderedItems, setOrderedItems] = useState<{ text: string; originalIndex: number }[]>([]);
   const [showHint, setShowHint] = useState(0);
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string; xp: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -97,6 +98,18 @@ export default function LessonPage() {
           items: indices.map(i => opts.right[i]),
           indexMap: indices, // indexMap[displayIndex] = originalIndex
         });
+      }
+
+      // Items mischen für Order-Übungen
+      if (exercise.type === 'order' && exercise.options && typeof exercise.options === 'object' && 'items' in exercise.options) {
+        const opts = exercise.options as { items: string[]; correctOrder: number[] };
+        // Erstelle Items mit Original-Index und mische
+        const items = opts.items.map((text, i) => ({ text, originalIndex: i }));
+        for (let i = items.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [items[i], items[j]] = [items[j], items[i]];
+        }
+        setOrderedItems(items);
       }
     }
   }, [currentExerciseIndex, lesson]);
@@ -212,11 +225,18 @@ sys.stderr = StringIO()
           break;
         case 'match':
           // Prüfe ob alle Zuordnungen korrekt sind
-          const opts = exercise.options as { left: string[]; right: string[]; correct: number[][] };
-          const allCorrect = opts.correct.every(([leftIdx, rightIdx]) =>
+          const matchOpts = exercise.options as { left: string[]; right: string[]; correct: number[][] };
+          const allMatchCorrect = matchOpts.correct.every(([leftIdx, rightIdx]) =>
             matchSelections[leftIdx] === rightIdx
           );
-          answer = { correct: allCorrect, selections: matchSelections };
+          answer = { correct: allMatchCorrect, selections: matchSelections };
+          break;
+        case 'order':
+          // Prüfe ob die Reihenfolge korrekt ist
+          const orderOpts = exercise.options as { items: string[]; correctOrder: number[] };
+          const currentOrder = orderedItems.map(item => item.originalIndex);
+          const isOrderCorrect = orderOpts.correctOrder.every((correctIdx, pos) => currentOrder[pos] === correctIdx);
+          answer = { correct: isOrderCorrect, order: currentOrder };
           break;
         default:
           answer = selectedAnswer;
@@ -500,6 +520,62 @@ sys.stderr = StringIO()
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {exercise.type === 'order' && exercise.options && typeof exercise.options === 'object' && 'items' in exercise.options && (
+            <div className="space-y-4">
+              <p className="text-py-gray-400 text-sm mb-4">
+                Klicke auf die Pfeile, um die Reihenfolge zu ändern.
+              </p>
+              <div className="space-y-2">
+                {orderedItems.map((item, index) => (
+                  <div
+                    key={item.originalIndex}
+                    className="flex items-center gap-3 bg-py-gray-800 rounded-xl p-3 border-2 border-py-gray-600"
+                  >
+                    {/* Position */}
+                    <span className="text-py-green-400 font-bold w-6 text-center">
+                      {index + 1}.
+                    </span>
+
+                    {/* Text */}
+                    <span className="flex-1 text-white">{item.text}</span>
+
+                    {/* Move Buttons */}
+                    {!feedback && (
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => {
+                            if (index > 0) {
+                              const newItems = [...orderedItems];
+                              [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+                              setOrderedItems(newItems);
+                            }
+                          }}
+                          disabled={index === 0}
+                          className="text-py-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-py-gray-400"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (index < orderedItems.length - 1) {
+                              const newItems = [...orderedItems];
+                              [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+                              setOrderedItems(newItems);
+                            }
+                          }}
+                          disabled={index === orderedItems.length - 1}
+                          className="text-py-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-py-gray-400"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
