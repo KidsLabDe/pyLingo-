@@ -61,6 +61,7 @@ export default function LessonPage() {
   const [fillBlankAnswer, setFillBlankAnswer] = useState('');
   const [matchSelections, setMatchSelections] = useState<Record<number, number>>({});
   const [selectedLeftIndex, setSelectedLeftIndex] = useState<number | null>(null);
+  const [shuffledRight, setShuffledRight] = useState<{ items: string[]; indexMap: number[] }>({ items: [], indexMap: [] });
   const [showHint, setShowHint] = useState(0);
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string; xp: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +82,22 @@ export default function LessonPage() {
       setSelectedLeftIndex(null);
       setShowHint(0);
       setFeedback(null);
+
+      // Rechte Seite mischen für Match-Übungen
+      if (exercise.type === 'match' && exercise.options && typeof exercise.options === 'object' && 'right' in exercise.options) {
+        const opts = exercise.options as { left: string[]; right: string[]; correct: number[][] };
+        // Erstelle Index-Array und mische es
+        const indices = opts.right.map((_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        // Gemischte Items und Mapping speichern
+        setShuffledRight({
+          items: indices.map(i => opts.right[i]),
+          indexMap: indices, // indexMap[displayIndex] = originalIndex
+        });
+      }
     }
   }, [currentExerciseIndex, lesson]);
 
@@ -423,16 +440,17 @@ sys.stderr = StringIO()
                   })}
                 </div>
 
-                {/* Rechte Seite */}
+                {/* Rechte Seite (gemischt) */}
                 <div className="space-y-2">
-                  {(exercise.options as { left: string[]; right: string[]; correct: number[][] }).right.map((item, index) => {
-                    const isMatched = Object.values(matchSelections).includes(index);
+                  {shuffledRight.items.map((item, displayIndex) => {
+                    const originalIndex = shuffledRight.indexMap[displayIndex];
+                    const isMatched = Object.values(matchSelections).includes(originalIndex);
                     return (
                       <button
-                        key={index}
+                        key={displayIndex}
                         onClick={() => {
                           if (!feedback && selectedLeftIndex !== null && !isMatched) {
-                            setMatchSelections(prev => ({ ...prev, [selectedLeftIndex]: index }));
+                            setMatchSelections(prev => ({ ...prev, [selectedLeftIndex]: originalIndex }));
                             setSelectedLeftIndex(null);
                           }
                         }}
